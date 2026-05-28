@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dolphin Fin Photo-ID Activity</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ocean: #0a3d5c;
+    --ocean-mid: #155e8a;
+    --ocean-light: #e8f4fd;
+    --ocean-pale: #f0f8ff;
+    --accent: #1a8fc1;
+    --accent-bright: #0fb8e0;
+    --sand: #f5f0e8;
+    --sand-dark: #e0d5c0;
+    --text-dark: #1a2a35;
+    --text-mid: #3d5a6e;
+    --text-light: #6b8fa3;
+    --success: #1a6b3c;
+    --success-bg: #e8f5ee;
+    --error: #8b2020;
+    --error-bg: #fdf0f0;
+    --radius: 10px;
+    --radius-lg: 16px;
+  }
+
+  body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    background: var(--sand);
+    color: var(--text-dark);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  header {
+    background: var(--ocean);
+    color: white;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  header h1 {
+    font-size: 20px;
+    font-weight: normal;
+    letter-spacing: 0.02em;
+  }
+
+  header p {
+    font-size: 12px;
+    opacity: 0.7;
+    font-family: 'Arial', sans-serif;
+    max-width: 420px;
+    line-height: 1.4;
+  }
+
+  .stats-bar {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    background: var(--ocean-mid);
+    padding: 8px 1.5rem;
+    font-family: 'Arial', sans-serif;
+    font-size: 13px;
+    color: rgba(255,255,255,0.9);
+    flex-wrap: wrap;
+  }
+
+  .stat-item { display: flex; gap: 6px; align-items: center; }
+  .stat-item strong { color: white; font-size: 15px; }
+
+  .progress-wrap { flex: 1; min-width: 120px; }
+  .progress-track { height: 5px; background: rgba(255,255,255,0.2); border-radius: 3px; }
+  .progress-fill { height: 5px; background: var(--accent-bright); border-radius: 3px; transition: width 0.4s ease; }
+
+  #instructions-bar {
+    background: var(--ocean-light);
+    border-bottom: 1px solid #c8dff0;
+    padding: 10px 1.5rem;
+    font-family: 'Arial', sans-serif;
+    font-size: 13px;
+    color: var(--ocean);
+    line-height: 1.5;
+  }
+
+  #game-area {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    max-width: 1100px;
+    margin: 0 auto;
+    align-items: start;
+  }
+
+  .panel-label {
+    font-family: 'Arial', sans-serif;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-light);
+    margin-bottom: 8px;
+  }
+
+  #mystery-fin {
+    border: 3px solid var(--ocean-mid);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    cursor: grab;
+    background: white;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    user-select: none;
+    box-shadow: 0 2px 12px rgba(10,61,92,0.12);
+  }
+  #mystery-fin:hover { border-color: var(--accent-bright); box-shadow: 0 4px 20px rgba(10,61,92,0.2); }
+  #mystery-fin.dragging { opacity: 0.6; cursor: grabbing; }
+  #mystery-fin img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; pointer-events: none; }
+  .mystery-label {
+    background: var(--ocean);
+    color: white;
+    padding: 8px 12px;
+    font-family: 'Arial', sans-serif;
+    font-size: 12px;
+    text-align: center;
+    letter-spacing: 0.03em;
+  }
+
+  #drag-hint {
+    margin-top: 10px;
+    font-family: 'Arial', sans-serif;
+    font-size: 12px;
+    color: var(--text-light);
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  #catalogue {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .cat-item {
+    border: 2px solid var(--sand-dark);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+    position: relative;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .cat-item:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(10,61,92,0.15); }
+  .cat-item.drop-hover { border-color: var(--accent-bright); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(15,184,224,0.3); }
+  .cat-item.correct { border-color: var(--success); background: var(--success-bg); pointer-events: none; transform: none; }
+  .cat-item.correct::after {
+    content: '✓';
+    position: absolute;
+    top: 6px; right: 8px;
+    font-size: 22px;
+    color: var(--success);
+    font-weight: bold;
+    text-shadow: 0 1px 3px rgba(255,255,255,0.9);
+  }
+  .cat-item.wrong-flash { animation: wrongpulse 0.5s ease forwards; }
+  @keyframes wrongpulse {
+    0%   { border-color: var(--error); box-shadow: 0 0 0 3px rgba(139,32,32,0.2); }
+    100% { border-color: var(--sand-dark); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  }
+  .cat-item img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; pointer-events: none; }
+  .cat-label {
+    padding: 5px 8px;
+    font-family: 'Arial', sans-serif;
+    font-size: 11px;
+    color: var(--text-light);
+    text-align: center;
+    background: var(--sand);
+    border-top: 1px solid var(--sand-dark);
+  }
+  .cat-item.correct .cat-label { color: var(--success); font-weight: bold; background: var(--success-bg); border-color: #b8dfc8; }
+
+  #feedback {
+    grid-column: 1 / -1;
+    min-height: 32px;
+    font-family: 'Arial', sans-serif;
+    font-size: 14px;
+    text-align: center;
+    font-weight: bold;
+    color: var(--text-light);
+    padding: 4px;
+  }
+  #feedback.good { color: var(--success); }
+  #feedback.bad  { color: var(--error); }
+
+  #overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10,61,92,0.55);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  #overlay.visible { display: flex; }
+
+  .modal {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 2.5rem 2rem;
+    max-width: 420px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(10,61,92,0.3);
+  }
+  .modal-icon { font-size: 52px; margin-bottom: 1rem; }
+  .modal h2 { font-size: 22px; font-weight: normal; color: var(--ocean); margin-bottom: 0.75rem; }
+  .modal p { font-family: 'Arial', sans-serif; font-size: 14px; color: var(--text-mid); line-height: 1.6; margin-bottom: 0.5rem; }
+  .modal-btn {
+    margin-top: 1.5rem;
+    padding: 11px 32px;
+    background: var(--ocean);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-family: 'Arial', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    transition: background 0.2s;
+  }
+  .modal-btn:hover { background: var(--ocean-mid); }
+
+  .score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 1rem 0; }
+  .score-cell { background: var(--ocean-pale); border-radius: 8px; padding: 12px; }
+  .score-cell .num { font-size: 28px; color: var(--ocean); font-weight: normal; }
+  .score-cell .lbl { font-family: 'Arial', sans-serif; font-size: 11px; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  #permit-note {
+    font-family: 'Arial', sans-serif;
+    font-size: 10px;
+    color: var(--text-light);
+    text-align: center;
+    padding: 10px 1.5rem;
+    border-top: 1px solid var(--sand-dark);
+    line-height: 1.5;
+  }
+
+  @media (max-width: 640px) {
+    #game-area { grid-template-columns: 1fr; }
+    #catalogue { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Dolphin Dorsal Fin Photo-ID</h1>
+    <p>MARI 520 — Marine Mammal Identification Activity</p>
+  </div>
+</header>
+
+<div class="stats-bar">
+  <div class="stat-item">Round <strong id="round-num">1</strong> of <strong id="round-total">7</strong></div>
+  <div class="stat-item">Score <strong id="score">0</strong></div>
+  <div class="stat-item">Attempts <strong id="attempts">0</strong></div>
+  <div class="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  </div>
+</div>
+
+<div id="instructions-bar">
+  <strong>How to play:</strong> Drag the mystery fin onto its match in the catalogue — or click a catalogue fin to attempt a match.
+  Five catalogue fins are decoys. <strong>You only get one attempt per round</strong> — a wrong answer ends the round. Look closely before you commit!
+  <em>All photos taken under NOAA-NMFS permit #21938-01 and DISL-NMFS permit #23772.</em>
+</div>
+
+<div id="game-area">
+  <div id="left-col">
+    <div class="panel-label">Mystery fin — identify this individual</div>
+    <div id="mystery-fin" draggable="true">
+      <img id="mystery-img" src="" alt="Mystery dorsal fin to identify" />
+      <div class="mystery-label" id="mystery-label">Loading…</div>
+    </div>
+    <div id="drag-hint">Drag to a catalogue fin,<br>or click a catalogue fin to attempt a match.</div>
+    <div id="feedback" role="status" aria-live="polite"></div>
+  </div>
+  <div id="right-col">
+    <div class="panel-label">Fin catalogue — one fin matches; five are decoys</div>
+    <div id="catalogue" role="list" aria-label="Catalogue fins"></div>
+  </div>
+</div>
+
+<div id="permit-note">
+  Photographs may not be cropped to remove copyright information. Images used for educational purposes only under NOAA-NMFS permit #21938-01 / DISL-NMFS permit #23772.
+</div>
+
+<div id="overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal">
+    <div class="modal-icon" id="modal-icon">🐬</div>
+    <h2 id="modal-title">Round complete!</h2>
+    <p id="modal-msg"></p>
+    <p id="modal-sub"></p>
+    <div id="score-grid-wrap"></div>
+    <button class="modal-btn" id="modal-btn">Next round →</button>
+  </div>
+</div>
+
+<script>
+const FINS = [
+  { id:'0046', mf:'0046_SMR466_2018Jan22_AMG_1636.JPG', cf:'0046_PS569_15_Aug_2006_ERJ_0018.jpg' },
+  { id:'0087', mf:'0087_PS835_12_Dec_2006_AMG_0470.JPG', cf:'0087_SMR010_2018Jan08_AMG_1232.JPG' },
+  { id:'0091', mf:'0091_NES129_2013Jul25_AMG_N1_0372.JPG', cf:'0091_SMR430_2018Jan22_AMG_0403.JPG' },
+  { id:'0092', mf:'0092_PS1352_2016Apr25_AMG_0027.JPG', cf:'0092_PS1352_NES187_2013_JUL_06_S2_KMA_0141.JPG' },
+  { id:'0209', mf:'0209_2014_Dec_16_BLB_387.JPG', cf:'0209_2016Mar01_BLB_342.JPG' },
+  { id:'0214', mf:'0214_PS499_13_Jun_2006_0006.JPG', cf:'0214_PS499_16_Jun_2006_ERJ_0023.jpg' },
+  { id:'0215', mf:'0215_PS508_2015_Mar_13_0209.JPG', cf:'0215_PS508_PS886_15_May_2007d20_0094.JPG' },
+  { id:'0216', mf:'0216_27_Jul_2003_BFd10154c_200011.JPG', cf:'0216_2018May24_AMG_0005.JPG' },
+  { id:'0378', mf:'0378_PS1886_2016May26_BLB_0455.JPG', cf:'0378_SMR091_2018Jan09_AMG_0510.JPG' },
+  { id:'0433', mf:'0433_NES024_2013_JUL_23_S1_VGT_0205.JPG', cf:'0433_SMR160_2018Jan10_AMG_1059.JPG' }
+];
+
+// ── IMAGE PATHS ──────────────────────────────────────────────────────────────
+// By default images are loaded from an "images/" subfolder next to this HTML file.
+// Change IMAGE_BASE_URL below if you host images elsewhere (e.g. an S3 bucket URL).
+const IMAGE_BASE_URL = 'images/';
+
+function img(filename) {
+  return IMAGE_BASE_URL + filename;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ROUNDS = 7;
+const DECOYS = 5;
+
+function shuffle(a) {
+  const b = [...a];
+  for (let i = b.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [b[i], b[j]] = [b[j], b[i]];
+  }
+  return b;
+}
+
+let G = {};
+
+function buildRounds() {
+  const pool = shuffle([...FINS]).slice(0, ROUNDS);
+  return pool.map(fin => {
+    const decoys = shuffle(FINS.filter(f => f.id !== fin.id)).slice(0, DECOYS);
+    const items = shuffle([
+      { file: fin.cf, isMatch: true },
+      ...decoys.map(d => ({ file: d.cf, isMatch: false }))
+    ]);
+    return { mystery: fin, catalogue: items };
+  });
+}
+
+function startGame() {
+  G = { rounds: buildRounds(), round: 0, score: 0, attempts: 0, matched: false };
+  document.getElementById('round-total').textContent = ROUNDS;
+  hideOverlay();
+  renderRound();
+}
+
+function renderRound() {
+  G.matched = false;
+  const r = G.rounds[G.round];
+
+  document.getElementById('round-num').textContent = G.round + 1;
+  document.getElementById('score').textContent = G.score;
+  document.getElementById('attempts').textContent = G.attempts;
+  document.getElementById('progress-fill').style.width = Math.round((G.round / ROUNDS) * 100) + '%';
+
+  const mfin = document.getElementById('mystery-fin');
+  const mimg = document.getElementById('mystery-img');
+  mimg.src = img(r.mystery.mf);
+  mimg.alt = 'Mystery dorsal fin — identify this individual';
+  document.getElementById('mystery-label').textContent = 'Mystery fin — drag to match';
+
+  mfin.ondragstart = e => { mfin.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; };
+  mfin.ondragend = () => mfin.classList.remove('dragging');
+
+  const cat = document.getElementById('catalogue');
+  cat.innerHTML = '';
+
+  r.catalogue.forEach((item, idx) => {
+    const div = document.createElement('div');
+    div.className = 'cat-item';
+    div.setAttribute('role', 'listitem');
+    div.setAttribute('aria-label', `Catalogue fin ${idx + 1}`);
+
+    const im = document.createElement('img');
+    im.src = img(item.file);
+    im.alt = `Catalogue fin ${idx + 1}`;
+
+    const lbl = document.createElement('div');
+    lbl.className = 'cat-label';
+    lbl.textContent = `Fin ${idx + 1}`;
+
+    div.appendChild(im);
+    div.appendChild(lbl);
+
+    div.ondragover = e => { e.preventDefault(); if (!div.classList.contains('correct')) div.classList.add('drop-hover'); };
+    div.ondragleave = () => div.classList.remove('drop-hover');
+    div.ondrop = e => { e.preventDefault(); div.classList.remove('drop-hover'); attempt(div, item); };
+    div.onclick = () => attempt(div, item);
+
+    cat.appendChild(div);
+  });
+
+  setFeedback('', '');
+}
+
+function attempt(el, item) {
+  if (G.matched) return;
+  G.matched = true;
+  G.attempts++;
+  document.getElementById('attempts').textContent = G.attempts;
+
+  if (item.isMatch) {
+    G.score++;
+    document.getElementById('score').textContent = G.score;
+    el.classList.add('correct');
+    el.querySelector('.cat-label').textContent = '✓ Match!';
+    setFeedback('Correct match!', 'good');
+    setTimeout(() => showRoundModal(true), 900);
+  } else {
+    el.classList.remove('wrong-flash');
+    void el.offsetWidth;
+    el.classList.add('wrong-flash');
+    setFeedback('Incorrect — moving to next round.', 'bad');
+    setTimeout(() => showRoundModal(false), 1200);
+  }
+}
+
+function setFeedback(msg, cls) {
+  const el = document.getElementById('feedback');
+  el.textContent = msg;
+  el.className = cls;
+}
+
+function showRoundModal(correct) {
+  const last = G.round >= ROUNDS - 1;
+
+  let icon, title, msg, sub;
+  if (last) {
+    icon = '🏆';
+    title = 'Activity complete!';
+    msg = `Final score: ${G.score} of ${ROUNDS} correct.`;
+    sub = getFinalComment();
+  } else if (correct) {
+    icon = '🐬';
+    title = 'Correct!';
+    msg = 'Good eye — you matched that fin.';
+    sub = 'Study the notch patterns and trailing edge carefully on the next one.';
+  } else {
+    icon = '❌';
+    title = 'Incorrect';
+    msg = 'That wasn\'t the right match — on to the next fin.';
+    sub = 'Look carefully at the trailing edge shape, notches, and any distinctive scars before committing.';
+  }
+
+  document.getElementById('modal-icon').textContent = icon;
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-msg').textContent = msg;
+  document.getElementById('modal-sub').textContent = sub;
+  document.getElementById('modal-btn').textContent = last ? 'Play again' : 'Next round →';
+
+  if (last) {
+    const pct = Math.round((G.score / ROUNDS) * 100);
+    document.getElementById('score-grid-wrap').innerHTML = `
+      <div class="score-grid">
+        <div class="score-cell"><div class="num">${G.score}/${ROUNDS}</div><div class="lbl">Fins matched</div></div>
+        <div class="score-cell"><div class="num">${pct}%</div><div class="lbl">Accuracy</div></div>
+        <div class="score-cell"><div class="num">${G.attempts}</div><div class="lbl">Total attempts</div></div>
+        <div class="score-cell"><div class="num">${(G.attempts / ROUNDS).toFixed(1)}</div><div class="lbl">Avg per round</div></div>
+      </div>`;
+  } else {
+    document.getElementById('score-grid-wrap').innerHTML = '';
+  }
+
+  showOverlay();
+  document.getElementById('progress-fill').style.width = Math.round(((G.round + 1) / ROUNDS) * 100) + '%';
+}
+
+function getFinalComment() {
+  const pct = Math.round((G.score / ROUNDS) * 100);
+  if (pct === 100) return 'Perfect score — outstanding fin ID skills!';
+  if (pct >= 71) return 'Strong performance. You have a solid grasp of fin identification.';
+  if (pct >= 43) return 'Good effort. Focus on trailing edge notches and tip shape.';
+  return 'Keep practicing — with time those notches and scars become much easier to read.';
+}
+
+function showOverlay() {
+  const o = document.getElementById('overlay');
+  o.classList.add('visible');
+  document.getElementById('modal-btn').focus();
+}
+
+function hideOverlay() {
+  document.getElementById('overlay').classList.remove('visible');
+}
+
+document.getElementById('modal-btn').onclick = () => {
+  const last = G.round >= ROUNDS - 1;
+  hideOverlay();
+  if (last) {
+    startGame();
+  } else {
+    G.round++;
+    renderRound();
+  }
+};
+
+startGame();
+</script>
+</body>
+</html>
